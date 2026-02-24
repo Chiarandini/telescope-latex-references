@@ -8,11 +8,12 @@ TELESCOPE LATEX LABELS
 2. Requirements ............. |telescope-latex-labels-requirements|
 3. Setup .................... |telescope-latex-labels-setup|
 4. Usage .................... |telescope-latex-labels-usage|
-5. Label Patterns ........... |telescope-latex-labels-patterns|
-6. Configuration ............ |telescope-latex-labels-config|
-7. Commands ................. |telescope-latex-labels-commands|
-8. Keybindings .............. |telescope-latex-labels-keybindings|
-9. Cache Format ............. |telescope-latex-labels-cache|
+5. Smart Jump ............... |telescope-latex-labels-smart-jump|
+6. Label Patterns ........... |telescope-latex-labels-patterns|
+7. Configuration ............ |telescope-latex-labels-config|
+8. Commands ................. |telescope-latex-labels-commands|
+9. Keybindings .............. |telescope-latex-labels-keybindings|
+10. Cache Format ............ |telescope-latex-labels-cache|
 
 ==============================================================================
 1. INTRO                                     *telescope-latex-labels-intro*
@@ -54,9 +55,11 @@ Load and configure the extension inside your Neovim config: >
     extensions = {
       latex_labels = {
         -- all keys are optional; defaults are shown
-        cache_strategy = "global",
-        recursive      = true,
-        auto_update    = false,
+        cache_strategy    = "global",
+        recursive         = true,
+        auto_update       = false,
+        enable_smart_jump = true,
+        smart_jump_window = 200,
         transformations = {
           thm      = "th:",
           prop     = "pr:",
@@ -105,8 +108,9 @@ Open the picker: >
   • Each entry is displayed as:
       [label_id] :: context  (filename:line)
 
-  • Selecting an entry opens the correct file (if it differs from the current
-    buffer) and jumps to the label's line, centred with `zz`.
+  • Selecting an entry triggers a *smart jump* (see |telescope-latex-labels-smart-jump|).
+    The correct file is opened automatically when the label lives in a
+    different file, and the view is centred with `zz`.
 
 To force-rebuild the cache after adding or renaming labels: >
 
@@ -119,7 +123,40 @@ To delete every cache file and start fresh: >
 <
 
 ==============================================================================
-5. LABEL PATTERNS                          *telescope-latex-labels-patterns*
+5. SMART JUMP                           *telescope-latex-labels-smart-jump*
+
+When you select a label the plugin verifies whether the cached line number
+still holds the expected label in the target file.
+
+  Match    The label is exactly where the cache says it is. Jump silently.
+
+  Shifted  The label is not at the cached line, but is found within
+           ±`smart_jump_window` lines. Jump to the new position and patch
+           the cache entry automatically.
+           Message: "Label shifted. Cache auto-updated."
+
+  Missing  The label cannot be found anywhere in the search window. Jump
+           to the original cached line and warn the user.
+           Message: "[Warning] Label not found at cached location. Please
+           run :LatexLabelsUpdate."
+
+Set `enable_smart_jump = false` to skip verification and jump directly to the
+cached line number without any checks.
+
+How labels are located ~
+
+The search checks each candidate line for the substring `{label_id}`.
+For prefix-transformed labels (e.g. id `th:snakeLem` produced from
+`\begin{thm}{...}{snakeLem}`) the search also tries `{snakeLem}` — the
+raw suffix after the last colon — so environment-inline labels are always
+found even though the prefix does not appear in the source file.
+
+If the file is already loaded as a Neovim buffer the search uses the buffer
+API (zero disk I/O). For files not yet open, the search streams only the
+relevant line window from disk so no extra buffer is opened.
+
+==============================================================================
+6. LABEL PATTERNS                           *telescope-latex-labels-patterns*
 
                                       *latex-labels-environment-pattern*
 Environment pattern ~
@@ -179,7 +216,7 @@ Pattern processing stops at the first `"environment"` match for a given line.
 `"standard"` patterns do not stop processing.
 
 ==============================================================================
-6. CONFIGURATION                           *telescope-latex-labels-config*
+7. CONFIGURATION                           *telescope-latex-labels-config*
 
 All options are passed in the `extensions.latex_labels` table during
 `telescope.setup()`.
@@ -219,6 +256,21 @@ auto_update ~
     file (`BufWritePost *.tex`).
     NOTE: For large multi-file projects this may cause a brief pause on save.
 
+enable_smart_jump ~
+    Type:    boolean
+    Default: `true`
+
+    See |telescope-latex-labels-smart-jump| for a full description.
+    Set to `false` to always jump straight to the cached line number.
+
+smart_jump_window ~
+    Type:    integer
+    Default: `200`
+
+    The number of lines to search on each side of the cached position when
+    a label is not found at its expected location.
+    Only relevant when `enable_smart_jump = true`.
+
 transformations ~
     Type:    table  (string → string)
     Default: see |telescope-latex-labels-setup|
@@ -247,7 +299,7 @@ patterns ~
     successful match for a line. `"standard"` patterns always run.
 
 ==============================================================================
-7. COMMANDS                               *telescope-latex-labels-commands*
+8. COMMANDS                               *telescope-latex-labels-commands*
 
 :Telescope latex_labels                         *:Telescope-latex_labels*
 
@@ -274,7 +326,7 @@ patterns ~
     (they match the glob `*.labels`).
 
 ==============================================================================
-8. KEYBINDINGS                         *telescope-latex-labels-keybindings*
+9. KEYBINDINGS                         *telescope-latex-labels-keybindings*
 
 Suggested mappings to add to your Neovim config: >
 
@@ -295,7 +347,7 @@ Suggested mappings to add to your Neovim config: >
 <
 
 ==============================================================================
-9. CACHE FORMAT                           *telescope-latex-labels-cache*
+10. CACHE FORMAT                          *telescope-latex-labels-cache*
 
 Cache files are plain text — one label per line:
 

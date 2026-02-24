@@ -70,7 +70,43 @@ M.open = function(opts, config)
 
         if not selection then return end
 
-        local entry = selection.value
+        local entry       = selection.value
+        local target_line = entry.line
+
+        if config.enable_smart_jump then
+          -- Run the search BEFORE opening the file: verify_or_find_label handles
+          -- unloaded files via disk I/O so we don't have to open it first.
+          local found = utils.verify_or_find_label(
+            entry.filename, entry.line, entry.id, config.smart_jump_window
+          )
+
+          if found and found ~= entry.line then
+            -- Label has shifted — jump to new position and patch the cache
+            target_line = found
+            vim.notify("[latex_labels] Label shifted. Cache auto-updated.", vim.log.levels.INFO)
+
+            local all = cache.read_cache(cache_path)
+            if all then
+              for _, e in ipairs(all) do
+                if e.line == entry.line and e.id == entry.id and e.filename == entry.filename then
+                  e.line = found
+                  break
+                end
+              end
+              cache.write_cache(cache_path, all)
+            end
+
+          elseif not found then
+            -- Label not found anywhere in the search window
+            vim.notify(
+              "[latex_labels] [Warning] Label not found at cached location. "
+                .. "Please run :LatexLabelsUpdate.",
+              vim.log.levels.WARN
+            )
+            -- target_line stays as entry.line (best-effort jump)
+          end
+          -- found == entry.line: exact match, silent jump
+        end
 
         -- Open the target file when it differs from the current buffer
         local current = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":p")
@@ -78,7 +114,7 @@ M.open = function(opts, config)
           vim.cmd("edit " .. vim.fn.fnameescape(entry.filename))
         end
 
-        vim.api.nvim_win_set_cursor(0, { entry.line, 0 })
+        vim.api.nvim_win_set_cursor(0, { target_line, 0 })
         vim.cmd("normal! zz")
       end)
 

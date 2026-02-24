@@ -20,6 +20,9 @@ scan on every open.
   environment name, or any custom command)
 - **vimtex-aware** — uses `b:vimtex.tex` to find the project root when vimtex
   is active; falls back to the current buffer
+- **Smart Jump** — automatically finds a label that has shifted since the cache
+  was written, silently patches the cache entry, and warns when a label cannot
+  be located at all
 - **Multi-file jump** — opens the correct file automatically when a label lives
   in a file other than the current buffer
 - **Two cache strategies**: global (tidy) or local (inspectable)
@@ -90,9 +93,11 @@ require("telescope").setup({
   extensions = {
     latex_labels = {
       -- all keys are optional; defaults shown below
-      cache_strategy = "global",
-      recursive      = true,
-      auto_update    = false,
+      cache_strategy    = "global",
+      recursive         = true,
+      auto_update       = false,
+      enable_smart_jump = true,
+      smart_jump_window = 200,
 
       -- Map environment names to label prefixes.
       -- Applied when the pattern \begin{env}{Title}{label} is matched.
@@ -212,6 +217,29 @@ patterns = {
 },
 ```
 
+## Smart Jump
+
+When you select a label the plugin verifies whether the cached line number still
+holds the expected label in the target file:
+
+| Situation | Behaviour |
+|---|---|
+| Exact match | Silent jump |
+| Label shifted | Jump to new position, auto-patch the cache entry, print info message |
+| Label missing | Jump to cached line, warn and ask you to run `:LatexLabelsUpdate` |
+
+Set `enable_smart_jump = false` to skip verification and always jump directly
+to the cached line number.
+
+**How labels are located:** the search looks for `{label_id}` as a substring of
+each line. For prefix-transformed labels (e.g. id `th:snakeLem` produced from
+`\begin{thm}{...}{snakeLem}`) the search also tries the raw suffix after the
+last colon (`{snakeLem}`), so environment-inline labels are found correctly.
+
+If the file is already open in a buffer the Neovim buffer API is used (no disk
+I/O). For files not yet loaded, the search streams the relevant line window
+directly from disk so no extra buffer is opened.
+
 ## Configuration reference
 
 | Option | Type | Default | Description |
@@ -219,6 +247,8 @@ patterns = {
 | `cache_strategy` | `string` | `"global"` | `"global"` stores caches in `stdpath("data")/cached_labels/`; `"local"` places a hidden `.filename.tex.labels` file next to your root file |
 | `recursive` | `boolean` | `true` | Follow `\include` and `\input` directives when scanning |
 | `auto_update` | `boolean` | `false` | Regenerate cache on every `BufWritePost` for `.tex` files |
+| `enable_smart_jump` | `boolean` | `true` | Search for shifted labels instead of jumping blindly to the cached line |
+| `smart_jump_window` | `integer` | `200` | Lines to search on each side of the cached position |
 | `transformations` | `table` | see above | Maps environment names to label prefixes |
 | `patterns` | `table` | see above | Ordered list of capture patterns |
 

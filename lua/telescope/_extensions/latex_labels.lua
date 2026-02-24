@@ -15,6 +15,10 @@ local DEFAULT_CONFIG = {
   -- Automatically regenerate the cache whenever a .tex file is saved
   auto_update = false,
 
+  -- Search ±N lines around the cached position when a label seems to have moved
+  enable_smart_jump = true,
+  smart_jump_window = 200,
+
   -- Map LaTeX environment names to label prefixes.
   -- Used for the \begin{env}{Title}{label} pattern.
   transformations = {
