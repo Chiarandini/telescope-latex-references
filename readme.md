@@ -58,7 +58,7 @@ scan on every open.
 
 ```lua
 {
-  "your-username/telescope-latex-labels.nvim",
+  "Chiarandini/telescope-latex-labels.nvim",
   dependencies = {
     "nvim-telescope/telescope.nvim",
     "nvim-lua/plenary.nvim",
@@ -73,7 +73,7 @@ scan on every open.
 
 ```lua
 use {
-  "your-username/telescope-latex-labels.nvim",
+  "Chiarandini/telescope-latex-labels.nvim",
   requires = {
     "nvim-telescope/telescope.nvim",
     "nvim-lua/plenary.nvim",
