@@ -1,0 +1,320 @@
+*telescope-latex-labels.txt*   Fast LaTeX label navigation for multi-file projects
+
+                                                     *telescope-latex-labels*
+
+TELESCOPE LATEX LABELS
+
+1. Intro .................... |telescope-latex-labels-intro|
+2. Requirements ............. |telescope-latex-labels-requirements|
+3. Setup .................... |telescope-latex-labels-setup|
+4. Usage .................... |telescope-latex-labels-usage|
+5. Label Patterns ........... |telescope-latex-labels-patterns|
+6. Configuration ............ |telescope-latex-labels-config|
+7. Commands ................. |telescope-latex-labels-commands|
+8. Keybindings .............. |telescope-latex-labels-keybindings|
+9. Cache Format ............. |telescope-latex-labels-cache|
+
+==============================================================================
+1. INTRO                                     *telescope-latex-labels-intro*
+
+telescope-latex-labels.nvim is a Telescope extension for navigating LaTeX
+labels across multi-file projects. It mirrors the architecture of
+telescope-cached-headings but is specialised for recursive project scanning
+and automatic label-prefix transformation.
+
+On first use the project is scanned starting from the root `.tex` file,
+following all `\include` and `\input` directives. The results are written to
+a flat plaintext cache. Subsequent picker opens read the cache directly,
+making them essentially instant even on large projects.
+
+Two classes of label are supported out of the box:
+
+  • Environment labels  `\begin{thm}{Snake Lemma}{snakeLem}`
+    The environment name is mapped to a prefix via the `transformations`
+    table (e.g. `thm` → `th:`), producing the id `th:snakeLem`.
+
+  • Standard labels     `\label{id}`
+    Context is inferred by looking back through the preceding lines for the
+    nearest meaningful content (section title, question text, command name,
+    or any custom LaTeX command). No whitelist needed.
+
+==============================================================================
+2. REQUIREMENTS                        *telescope-latex-labels-requirements*
+
+  • nvim-telescope/telescope.nvim
+  • nvim-lua/plenary.nvim
+  • lervag/vimtex  (optional — enables automatic root-file detection)
+
+==============================================================================
+3. SETUP                                      *telescope-latex-labels-setup*
+
+Load and configure the extension inside your Neovim config: >
+
+  require("telescope").setup({
+    extensions = {
+      latex_labels = {
+        -- all keys are optional; defaults are shown
+        cache_strategy = "global",
+        recursive      = true,
+        auto_update    = false,
+        transformations = {
+          thm      = "th:",
+          prop     = "pr:",
+          defn     = "df:",
+          lem      = "lm:",
+          cor      = "co:",
+          example  = "ex:",
+          exercise = "x:",
+        },
+        patterns = {
+          { pattern = "\\begin{(%w+)}{(.-)}{(.-)}", type = "environment" },
+          { pattern = "\\label{(.-)}", type = "standard" },
+        },
+      },
+    },
+  })
+
+  require("telescope").load_extension("latex_labels")
+<
+
+Suggested keybindings: >
+
+  vim.keymap.set("n", "<leader>fl",
+    "<cmd>Telescope latex_labels<cr>",
+    { desc = "Find LaTeX labels" })
+
+  vim.keymap.set("n", "<leader>fL",
+    "<cmd>LatexLabelsUpdate<cr>",
+    { desc = "Update LaTeX labels cache" })
+<
+
+==============================================================================
+4. USAGE                                      *telescope-latex-labels-usage*
+
+Open the picker: >
+
+  :Telescope latex_labels
+<
+
+  • The first time you open the picker, the project is scanned automatically
+    starting from the root file. Subsequent opens read the cache directly.
+
+  • Root file detection uses vimtex (`b:vimtex.tex`) when available, and
+    falls back to the current buffer's file otherwise.
+
+  • Each entry is displayed as:
+      [label_id] :: context  (filename:line)
+
+  • Selecting an entry opens the correct file (if it differs from the current
+    buffer) and jumps to the label's line, centred with `zz`.
+
+To force-rebuild the cache after adding or renaming labels: >
+
+  :LatexLabelsUpdate
+<
+
+To delete every cache file and start fresh: >
+
+  :LatexLabelsWipeAll
+<
+
+==============================================================================
+5. LABEL PATTERNS                          *telescope-latex-labels-patterns*
+
+                                      *latex-labels-environment-pattern*
+Environment pattern ~
+
+Matches labels declared inline on a single line with an explicit title: >
+
+  \begin{thm}{Snake Lemma}{snakeLem}
+<
+The environment name (`thm`) is looked up in `transformations`. If a prefix
+is found, the entry is stored with id `th:snakeLem` and context `Snake Lemma`.
+If the environment is not in `transformations` the line is silently skipped
+by this pattern (the standard pattern may still match a `\label{}` elsewhere
+in the same environment).
+
+                                        *latex-labels-standard-pattern*
+Standard pattern ~
+
+Matches any bare `\label{id}` regardless of surrounding context: >
+
+  \Question[Why is the sky blue?]
+    Some question text.
+    \label{q:sky}
+<
+The plugin looks back through the 8 preceding lines for the first non-blank,
+non-comment line and extracts a context string from it using the following
+priority order:
+
+  1. First brace group    `{content}`  →  content
+  2. First bracket group  `[content]`  →  content
+  3. Command name         `\cmd`       →  \cmd
+  4. Raw line text (truncated to 80 characters)
+
+This handles `\Question`, `\exercise`, `\section`, `\begin{...}`, and any
+other custom LaTeX command without any additional configuration.
+
+                                           *latex-labels-custom-patterns*
+Custom patterns ~
+
+Add entries to `transformations` for new environment names, and add entries
+to `patterns` for environments with a different argument signature: >
+
+  transformations = {
+    thm = "th:",   -- built-in
+    myEnv = "my:", -- custom
+  },
+  patterns = {
+    -- built-in: \begin{env}{Title}{label}
+    { pattern = "\\begin{(%w+)}{(.-)}{(.-)}", type = "environment" },
+    -- custom: \begin{env}[label]{Title}
+    { pattern = "\\begin{(%w+)}%[(.-)%]{(.-)}", type = "environment" },
+    -- standard fallback (always keep last)
+    { pattern = "\\label{(.-)}", type = "standard" },
+  },
+<
+
+Pattern processing stops at the first `"environment"` match for a given line.
+`"standard"` patterns do not stop processing.
+
+==============================================================================
+6. CONFIGURATION                           *telescope-latex-labels-config*
+
+All options are passed in the `extensions.latex_labels` table during
+`telescope.setup()`.
+
+cache_strategy ~
+    Type:    string
+    Default: `"global"`
+
+    Controls where cache files are stored.
+
+    `"global"` (recommended)
+      Stores all caches in Neovim's standard data directory:
+        stdpath("data")/cached_labels/<hash>.labels
+      Keeps your project directories clean.
+
+    `"local"`
+      Creates a hidden file next to the root .tex file:
+        /path/to/dir/.main.tex.labels
+      Useful if you want to inspect the cache. Remember to add `*.labels`
+      to your `.gitignore`.
+
+recursive ~
+    Type:    boolean
+    Default: `true`
+
+    When `true`, the scanner follows `\include{file}` and `\input{file}`
+    directives and recursively scans the referenced files. A cycle guard
+    ensures each file is visited at most once.
+
+    When `false`, only the root file is scanned.
+
+auto_update ~
+    Type:    boolean
+    Default: `false`
+
+    When `true`, the cache is regenerated every time you save any `.tex`
+    file (`BufWritePost *.tex`).
+    NOTE: For large multi-file projects this may cause a brief pause on save.
+
+transformations ~
+    Type:    table  (string → string)
+    Default: see |telescope-latex-labels-setup|
+
+    Maps LaTeX environment names to label prefixes. Used when the
+    `"environment"` pattern matches a line. Environments not present in this
+    table are silently skipped by the environment pattern; their labels may
+    still be captured by the standard `\label{}` pattern.
+
+patterns ~
+    Type:    table  (list of { pattern, type })
+    Default: see |telescope-latex-labels-setup|
+
+    Ordered list of capture patterns applied to each line. Each entry has:
+
+      `pattern`  A Lua pattern string.
+      `type`     `"environment"` or `"standard"`.
+
+    For `"environment"` patterns the pattern must capture three groups:
+      (env_name, title, label)
+
+    For `"standard"` patterns the pattern must capture one group:
+      (label_id)
+
+    Processing of `"environment"` matches stops (via `break`) on the first
+    successful match for a line. `"standard"` patterns always run.
+
+==============================================================================
+7. COMMANDS                               *telescope-latex-labels-commands*
+
+:Telescope latex_labels                         *:Telescope-latex_labels*
+
+    Open the Telescope label picker for the current LaTeX project.
+    Generates the cache on first use. The root file is determined via
+    vimtex when available, otherwise the current buffer's file is used.
+
+:LatexLabelsUpdate                                  *:LatexLabelsUpdate*
+
+    Force-regenerate the cache for the current project by re-scanning from
+    the root file. Use this after adding, renaming, or removing labels.
+    Prints the number of labels found when complete.
+
+:LatexLabelsWipeAll                                *:LatexLabelsWipeAll*
+
+    Delete every cache file written by this plugin and print how many were
+    removed. Useful when you want a guaranteed clean slate — for example
+    after upgrading the plugin or after restructuring your project.
+
+    The next time you open the picker the cache is regenerated automatically.
+
+    Note: only supported with `cache_strategy = "global"`. With `"local"`
+    the cache files sit next to your source files; delete them manually
+    (they match the glob `*.labels`).
+
+==============================================================================
+8. KEYBINDINGS                         *telescope-latex-labels-keybindings*
+
+Suggested mappings to add to your Neovim config: >
+
+  -- Open the label picker
+  vim.keymap.set("n", "<leader>fl",
+    "<cmd>Telescope latex_labels<cr>",
+    { desc = "Find LaTeX labels" })
+
+  -- Force-regenerate the cache
+  vim.keymap.set("n", "<leader>fL",
+    "<cmd>LatexLabelsUpdate<cr>",
+    { desc = "Update LaTeX labels cache" })
+
+  -- Wipe all caches (re-generated automatically on next picker open)
+  vim.keymap.set("n", "<leader>fW",
+    "<cmd>LatexLabelsWipeAll<cr>",
+    { desc = "Wipe all label caches" })
+<
+
+==============================================================================
+9. CACHE FORMAT                           *telescope-latex-labels-cache*
+
+Cache files are plain text — one label per line:
+
+  line_number|label_id|context|absolute_filepath
+
+Example: >
+
+  50|th:snakeLem|Snake Lemma|/Users/me/thesis/chapter1.tex
+  102|pr:bigProp|Main Proposition|/Users/me/thesis/chapter1.tex
+  15|df:myDef|Definition of X|/Users/me/thesis/chapter2.tex
+<
+
+Lines beginning with `#` are treated as comments and ignored.
+
+For the `"global"` strategy files live in:
+  stdpath("data")/cached_labels/<sha256-of-root-path>.labels
+
+For the `"local"` strategy the file is placed next to your root `.tex` file:
+  /path/to/project/.main.tex.labels
+
+==============================================================================
+vim:ft=help:tw=78:
