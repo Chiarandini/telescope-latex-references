@@ -85,10 +85,11 @@ local function scan(filepath, root_dir, config, results, visited)
       table.remove(recent, 1)
     end
 
-    -- ── 1. Recursion via \include / \input ────────────────────────────────
+    -- ── 1. Recursion via \include / \input / \subfile ─────────────────────
     if config.recursive then
       local inc = line:match("\\include%s*{(.-)}")
                or line:match("\\input%s*{(.-)}")
+               or line:match("\\subfile%s*{(.-)}")
       if inc and vim.trim(inc) ~= "" then
         local next_file = resolve_inc(root_dir, inc)
         scan(next_file, root_dir, config, results, visited)

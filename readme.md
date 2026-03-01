@@ -28,6 +28,10 @@ scan on every open.
 - **Two cache strategies**: global (tidy) or local (inspectable)
 - **Auto-update** on save via `BufWritePost` (opt-in)
 - **Wipe all caches** in one command when you need a clean slate
+- **Subfile toggle** — when editing a LaTeX subfile (using the `subfiles` package),
+  press a key to switch between a full-project view and a view of only the labels
+  defined in your current file, with the cursor pre-positioned on the first label
+  from your file in the full-project view
 
 ## Requirements
 
@@ -98,6 +102,10 @@ require("telescope").setup({
       auto_update       = false,
       enable_smart_jump = true,
       smart_jump_window = 200,
+
+      -- Subfile toggle: manual root override and toggle key
+      root_file          = "",
+      subfile_toggle_key = "<C-g>",
 
       -- Map environment names to label prefixes.
       -- Applied when the pattern \begin{env}{Title}{label} is matched.
@@ -240,6 +248,39 @@ If the file is already open in a buffer the Neovim buffer API is used (no disk
 I/O). For files not yet loaded, the search streams the relevant line window
 directly from disk so no extra buffer is opened.
 
+## Subfile Toggle
+
+If you work with the LaTeX [`subfiles`](https://ctan.org/pkg/subfiles) package,
+the plugin detects when you are editing a subfile by checking three sources in
+order:
+
+1. **vimtex** — if vimtex is active, `b:vimtex.tex` already points to the root
+2. **`\documentclass[root.tex]{subfiles}`** — parsed from the first 20 lines of
+   the current file when vimtex is not available
+3. **`root_file` config key** — an absolute path you set manually as a fallback
+
+When a root file is detected and differs from the file you are editing, the
+picker title changes to indicate the current mode and the available toggle key:
+
+- **Full-project mode** (default): shows all labels from the entire project,
+  with the cursor pre-positioned on the first label defined in your current file
+  — title reads `LaTeX Labels (full project) [<C-g>: this file]`
+- **This-file mode**: shows only labels defined in the current file — title reads
+  `LaTeX Labels (this file) [<C-g>: full project]`
+
+Press the toggle key (`<C-g>` by default) inside the picker to switch between
+modes. Press it again to return.
+
+If root detection fails (e.g. the `\documentclass` argument is non-trivial and
+vimtex is not active), set `root_file` as a manual override:
+
+```lua
+latex_labels = {
+  root_file          = "/home/user/thesis/main.tex",
+  subfile_toggle_key = "<C-g>",
+}
+```
+
 ## Configuration reference
 
 | Option | Type | Default | Description |
@@ -251,6 +292,8 @@ directly from disk so no extra buffer is opened.
 | `smart_jump_window` | `integer` | `200` | Lines to search on each side of the cached position |
 | `transformations` | `table` | see above | Maps environment names to label prefixes |
 | `patterns` | `table` | see above | Ordered list of capture patterns |
+| `root_file` | `string` | `""` | Absolute path to the root `.tex` file; fallback when vimtex is absent and auto-detection fails |
+| `subfile_toggle_key` | `string` | `"<C-g>"` | Key to toggle between full-project and this-file view inside the picker |
 
 ## Cache format
 

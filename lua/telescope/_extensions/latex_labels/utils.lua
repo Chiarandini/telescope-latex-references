@@ -125,4 +125,31 @@ M.get_root_file = function()
   return vim.fn.fnamemodify(filepath, ":p")
 end
 
+--- Detect the root file of a LaTeX subfile by parsing
+--- \documentclass[root.tex]{subfiles} from the first 20 lines.
+--- Returns the absolute, normalised path to the root file, or nil.
+---@param filepath string  Absolute path of the subfile.
+---@return string|nil
+M.find_root_via_subfiles = function(filepath)
+  local f = io.open(filepath, "r")
+  if not f then return nil end
+  local count = 0
+  for line in f:lines() do
+    count = count + 1
+    if count > 20 then break end
+    local rel = line:match("\\documentclass%[(.-)%]{subfiles}")
+    if rel then
+      f:close()
+      local dir = vim.fn.fnamemodify(filepath, ":h")
+      local abs = vim.fn.fnamemodify(dir .. "/" .. rel, ":p")
+      -- :p may add a trailing slash for bare directory names; strip it
+      if abs:sub(-1) == "/" then abs = abs:sub(1, -2) end
+      if vim.fn.filereadable(abs) == 1 then return abs end
+      return nil
+    end
+  end
+  f:close()
+  return nil
+end
+
 return M

@@ -19,6 +19,10 @@ local DEFAULT_CONFIG = {
   enable_smart_jump = true,
   smart_jump_window = 200,
 
+  -- Subfile toggle: manual root override and toggle key
+  root_file          = "",        -- manual override: absolute path to the root .tex file
+  subfile_toggle_key = "<C-g>",   -- key to toggle full-project↔this-file mode inside the picker
+
   -- Map LaTeX environment names to label prefixes.
   -- Used for the \begin{env}{Title}{label} pattern.
   transformations = {
