@@ -23,6 +23,9 @@ local DEFAULT_CONFIG = {
   root_file          = "",        -- manual override: absolute path to the root .tex file
   subfile_toggle_key = "<C-g>",   -- key to toggle full-project↔this-file mode inside the picker
 
+  -- Copy label reference to system clipboard without opening the file
+  copy_label_key = "<C-y>",       -- key to yank the label id (e.g. "df:scheme") into the + register
+
   -- Map LaTeX environment names to label prefixes.
   -- Used for the \begin{env}{Title}{label} pattern.
   transformations = {

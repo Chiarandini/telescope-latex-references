@@ -209,6 +209,20 @@ M.open = function(opts, config, overrides)
         map("n", toggle_key, toggle_fn)
       end
 
+      -- Copy label reference to system clipboard
+      local copy_key = config.copy_label_key or "<C-y>"
+      local copy_fn = function()
+        local selection = action_state.get_selected_entry()
+        if not selection then return end
+        local label = selection.value.id
+        vim.fn.setreg("+", label)
+        vim.fn.setreg('"', label)
+        actions.close(prompt_bufnr)
+        vim.notify('[latex_labels] Copied "' .. label .. '" to clipboard.', vim.log.levels.INFO)
+      end
+      map("i", copy_key, copy_fn)
+      map("n", copy_key, copy_fn)
+
       return true
     end,
   }):find()
