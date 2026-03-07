@@ -1,15 +1,5 @@
 local M = {}
 
-local actions      = require("telescope.actions")
-local action_state = require("telescope.actions.state")
-local finders      = require("telescope.finders")
-local pickers      = require("telescope.pickers")
-local conf         = require("telescope.config").values
-
-local cache   = require("telescope._extensions.latex_labels.cache")
-local scanner = require("telescope._extensions.latex_labels.scanner")
-local utils   = require("telescope._extensions.latex_labels.utils")
-
 ---Apply an optional copy transformation to a label string.
 ---`transform` may be:
 ---  • nil        – return the label unchanged
@@ -58,6 +48,15 @@ end
 ---@param config    table      Plugin configuration (merged defaults + user overrides).
 ---@param overrides table|nil  Internal overrides for toggle: { mode, origin_filepath, root_filepath }
 M.open = function(opts, config, overrides)
+  local actions      = require("telescope.actions")
+  local action_state = require("telescope.actions.state")
+  local finders      = require("telescope.finders")
+  local pickers      = require("telescope.pickers")
+  local conf         = require("telescope.config").values
+  local cache   = require("telescope._extensions.latex_labels.cache")
+  local scanner = require("telescope._extensions.latex_labels.scanner")
+  local utils   = require("telescope._extensions.latex_labels.utils")
+
   overrides = overrides or {}
   local mode = overrides.mode or "global"
 

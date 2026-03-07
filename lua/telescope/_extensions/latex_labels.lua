@@ -1,8 +1,4 @@
 local telescope = require("telescope")
-local picker    = require("telescope._extensions.latex_labels.picker")
-local cache     = require("telescope._extensions.latex_labels.cache")
-local scanner   = require("telescope._extensions.latex_labels.scanner")
-local utils     = require("telescope._extensions.latex_labels.utils")
 
 local DEFAULT_CONFIG = {
   -- "local"  -> hidden file next to the root .tex file: .main.tex.labels
@@ -63,6 +59,9 @@ local config = {}
 
 ---Run a full cache regeneration for the project rooted at the current buffer.
 local function update_cache()
+  local cache   = require("telescope._extensions.latex_labels.cache")
+  local scanner = require("telescope._extensions.latex_labels.scanner")
+  local utils   = require("telescope._extensions.latex_labels.utils")
   local root_file = utils.get_root_file()
   if not root_file then
     vim.notify("[latex_labels] No file associated with current buffer.", vim.log.levels.WARN)
@@ -100,6 +99,7 @@ return telescope.register_extension({
 
     -- :LatexLabelsWipeAll — delete every cache file written by this plugin
     vim.api.nvim_create_user_command("LatexLabelsWipeAll", function()
+      local cache = require("telescope._extensions.latex_labels.cache")
       local count, err = cache.wipe_all_caches(config.cache_strategy)
       if err then
         vim.notify("[latex_labels] " .. err, vim.log.levels.WARN)
@@ -126,7 +126,7 @@ return telescope.register_extension({
 
   exports = {
     latex_labels = function(opts)
-      picker.open(opts or {}, config)
+      require("telescope._extensions.latex_labels.picker").open(opts or {}, config)
     end,
   },
 })
