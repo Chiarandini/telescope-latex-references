@@ -10,6 +10,28 @@ local cache   = require("telescope._extensions.latex_labels.cache")
 local scanner = require("telescope._extensions.latex_labels.scanner")
 local utils   = require("telescope._extensions.latex_labels.utils")
 
+---Apply an optional copy transformation to a label string.
+---`transform` may be:
+---  • nil        – return the label unchanged
+---  • table      – map of prefix strings to format strings (with %s)
+---  • function   – called with the label, must return the transformed string
+---@param label     string
+---@param transform table|function|nil
+---@return string
+local function apply_transform(label, transform)
+  if not transform then return label end
+  if type(transform) == "function" then
+    return transform(label) or label
+  elseif type(transform) == "table" then
+    for prefix, fmt in pairs(transform) do
+      if vim.startswith(label, prefix) then
+        return string.format(fmt, label)
+      end
+    end
+  end
+  return label
+end
+
 ---Build the display string shown in the Telescope prompt.
 ---Format: "[label_id] :: context  (filename:line)"
 ---@param entry table  { id, context, filename, line }
@@ -215,10 +237,11 @@ M.open = function(opts, config, overrides)
         local selection = action_state.get_selected_entry()
         if not selection then return end
         local label = selection.value.id
-        vim.fn.setreg("+", label)
-        vim.fn.setreg('"', label)
+        local text  = apply_transform(label, config.copy_transform)
+        vim.fn.setreg("+", text)
+        vim.fn.setreg('"', text)
         actions.close(prompt_bufnr)
-        vim.notify('[latex_labels] Copied "' .. label .. '" to clipboard.', vim.log.levels.INFO)
+        vim.notify('[latex_labels] Copied "' .. text .. '" to clipboard.', vim.log.levels.INFO)
       end
       map("i", copy_key, copy_fn)
       map("n", copy_key, copy_fn)

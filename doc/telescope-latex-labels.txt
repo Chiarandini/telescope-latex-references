@@ -10,10 +10,12 @@ TELESCOPE LATEX LABELS
 4. Usage .................... |telescope-latex-labels-usage|
 5. Smart Jump ............... |telescope-latex-labels-smart-jump|
 6. Label Patterns ........... |telescope-latex-labels-patterns|
-7. Configuration ............ |telescope-latex-labels-config|
-8. Commands ................. |telescope-latex-labels-commands|
-9. Keybindings .............. |telescope-latex-labels-keybindings|
-10. Cache Format ............ |telescope-latex-labels-cache|
+7. Subfile Toggle ........... |telescope-latex-labels-subfile|
+8. Copy Label ............... |telescope-latex-labels-copy|
+9. Configuration ............ |telescope-latex-labels-config|
+10. Commands ................ |telescope-latex-labels-commands|
+11. Keybindings ............. |telescope-latex-labels-keybindings|
+12. Cache Format ............ |telescope-latex-labels-cache|
 
 ==============================================================================
 1. INTRO                                     *telescope-latex-labels-intro*
@@ -60,6 +62,15 @@ Load and configure the extension inside your Neovim config: >
         auto_update       = false,
         enable_smart_jump = true,
         smart_jump_window = 200,
+
+        -- Subfile toggle
+        root_file          = "",
+        subfile_toggle_key = "<C-g>",
+
+        -- Copy label to clipboard
+        copy_label_key = "<C-y>",
+        copy_transform = nil,  -- table, function, or nil; see |latex-labels-copy|
+
         transformations = {
           thm      = "th:",
           prop     = "pr:",
@@ -216,7 +227,81 @@ Pattern processing stops at the first `"environment"` match for a given line.
 `"standard"` patterns do not stop processing.
 
 ==============================================================================
-7. CONFIGURATION                           *telescope-latex-labels-config*
+7. SUBFILE TOGGLE                          *telescope-latex-labels-subfile*
+
+When editing a LaTeX subfile (using the `subfiles` package), the plugin
+detects a root file by checking three sources in order:
+
+  1. vimtex — `b:vimtex.tex` when vimtex is active.
+  2. `\documentclass[root.tex]{subfiles}` — parsed from the first 20 lines.
+  3. `root_file` config key — an absolute path set manually as a fallback.
+
+When the root file differs from the file you are editing the picker title
+changes to reflect the current mode and the available toggle key:
+
+  Full-project mode (default) ~
+    Shows all labels from the entire project. The cursor is pre-positioned
+    on the first label belonging to your current file. Title: >
+      LaTeX Labels (full project) [<C-g>: this file]
+<
+  This-file mode ~
+    Shows only labels defined in the current file. Title: >
+      LaTeX Labels (this file) [<C-g>: full project]
+<
+Press `subfile_toggle_key` (default `<C-g>`) inside the picker to switch
+between modes.
+
+Manual root override: >
+
+  latex_labels = {
+    root_file          = "/home/user/thesis/main.tex",
+    subfile_toggle_key = "<C-g>",
+  }
+<
+
+==============================================================================
+8. COPY LABEL                                *telescope-latex-labels-copy*
+                                                        *latex-labels-copy*
+
+Press `copy_label_key` (default `<C-y>`) inside the picker to copy the
+selected label's reference to the system clipboard (`+` register) without
+opening the file.
+
+copy_transform ~
+
+An optional hook that transforms the label string before it is placed in the
+clipboard. Accepts two forms:
+
+Table — map label prefixes to Lua format strings (`%s` is the full label): >
+
+  copy_transform = {
+    ["df:"] = "\\cref{%s}",
+    ["lm:"] = "\\cref{%s}",
+    ["th:"] = "\\cref{%s}",
+    ["co:"] = "\\cref{%s}",
+    ["pr:"] = "\\cref{%s}",
+    ["ex:"] = "example~\\ref{%s}",
+    ["eq:"] = "equation~\\eqref{%s}",
+  },
+<
+With this config pressing `<C-y>` on `df:grp` copies `\cref{df:grp}`, and
+on `eq:euler` copies `equation~\eqref{eq:euler}`. Labels whose prefix is
+not in the table are copied unchanged.
+
+Function — for logic a flat table cannot express: >
+
+  copy_transform = function(label)
+    if label:match("^eq:") then
+      return "equation~\\eqref{" .. label .. "}"
+    end
+    return "\\cref{" .. label .. "}"
+  end,
+<
+
+When `copy_transform` is `nil` (the default) the raw label id is copied.
+
+==============================================================================
+9. CONFIGURATION                           *telescope-latex-labels-config*
 
 All options are passed in the `extensions.latex_labels` table during
 `telescope.setup()`.
@@ -271,6 +356,50 @@ smart_jump_window ~
     a label is not found at its expected location.
     Only relevant when `enable_smart_jump = true`.
 
+root_file ~
+    Type:    string
+    Default: `""`
+
+    Absolute path to the root `.tex` file. Used as a manual fallback when
+    vimtex is not active and the `\documentclass[...]{subfiles}` heuristic
+    fails or is non-trivial. Has no effect if vimtex or the heuristic
+    succeeds first.
+
+subfile_toggle_key ~
+    Type:    string
+    Default: `"<C-g>"`
+
+    Key (in both insert and normal mode) to toggle between full-project
+    and this-file view inside the picker. Only active when the plugin has
+    detected a root file that differs from the file you are editing.
+    See |telescope-latex-labels-subfile|.
+
+copy_label_key ~
+    Type:    string
+    Default: `"<C-y>"`
+
+    Key (in both insert and normal mode) to copy the selected label
+    reference to the system clipboard (`+` register) without navigating
+    to the file.
+
+copy_transform ~
+    Type:    table | function | nil
+    Default: `nil`
+
+    Optional transformation applied to the label string before it is
+    placed in the clipboard.
+
+    When a table, keys are label-prefix strings and values are Lua format
+    strings where `%s` is replaced by the full label id. The first
+    matching prefix wins; unmatched labels are copied unchanged.
+
+    When a function it receives the label string and must return the
+    transformed string.
+
+    When `nil` the raw label id is copied.
+
+    See |telescope-latex-labels-copy| for full examples.
+
 transformations ~
     Type:    table  (string → string)
     Default: see |telescope-latex-labels-setup|
@@ -299,7 +428,7 @@ patterns ~
     successful match for a line. `"standard"` patterns always run.
 
 ==============================================================================
-8. COMMANDS                               *telescope-latex-labels-commands*
+10. COMMANDS                              *telescope-latex-labels-commands*
 
 :Telescope latex_labels                         *:Telescope-latex_labels*
 
@@ -326,7 +455,7 @@ patterns ~
     (they match the glob `*.labels`).
 
 ==============================================================================
-9. KEYBINDINGS                         *telescope-latex-labels-keybindings*
+11. KEYBINDINGS                        *telescope-latex-labels-keybindings*
 
 Suggested mappings to add to your Neovim config: >
 
@@ -347,7 +476,7 @@ Suggested mappings to add to your Neovim config: >
 <
 
 ==============================================================================
-10. CACHE FORMAT                          *telescope-latex-labels-cache*
+12. CACHE FORMAT                          *telescope-latex-labels-cache*
 
 Cache files are plain text — one label per line:
 

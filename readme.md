@@ -32,6 +32,9 @@ scan on every open.
   press a key to switch between a full-project view and a view of only the labels
   defined in your current file, with the cursor pre-positioned on the first label
   from your file in the full-project view
+- **Copy with transform** — press a key inside the picker to copy a label
+  reference to the system clipboard; an optional `copy_transform` hook lets you
+  wrap the label automatically (e.g. `df:grp` → `\cref{df:grp}`)
 
 ## Requirements
 
@@ -106,6 +109,15 @@ require("telescope").setup({
       -- Subfile toggle: manual root override and toggle key
       root_file          = "",
       subfile_toggle_key = "<C-g>",
+
+      -- Copy label key and optional transformation hook
+      copy_label_key = "<C-y>",
+      -- copy_transform: nil (raw label), a prefix→format table, or a function.
+      -- Example table (see "Copy Label" section below for details):
+      -- copy_transform = {
+      --   ["df:"] = "\\cref{%s}", ["lm:"] = "\\cref{%s}",
+      --   ["eq:"] = "equation~\\eqref{%s}",
+      -- },
 
       -- Map environment names to label prefixes.
       -- Applied when the pattern \begin{env}{Title}{label} is matched.
@@ -281,6 +293,49 @@ latex_labels = {
 }
 ```
 
+## Copy Label
+
+Press `copy_label_key` (default `<C-y>`) inside the picker to copy the selected
+label's reference to the system clipboard (`+` register) without jumping to the
+file.
+
+### `copy_transform`
+
+An optional hook that transforms the label string before it is placed in the
+clipboard. Accepts two forms:
+
+**Table** — map label prefixes to Lua format strings (`%s` is replaced with the
+full label id):
+
+```lua
+copy_transform = {
+  ["df:"] = "\\cref{%s}",
+  ["lm:"] = "\\cref{%s}",
+  ["th:"] = "\\cref{%s}",
+  ["co:"] = "\\cref{%s}",
+  ["pr:"] = "\\cref{%s}",
+  ["ex:"] = "example~\\ref{%s}",
+  ["eq:"] = "equation~\\eqref{%s}",
+},
+```
+
+With this config, pressing `<C-y>` on `df:grp` copies `\cref{df:grp}`, and on
+`eq:euler` copies `equation~\eqref{eq:euler}`. Labels whose prefix is not in the
+table are copied unchanged.
+
+**Function** — for logic that a flat table cannot express:
+
+```lua
+copy_transform = function(label)
+  if label:match("^eq:") then
+    return "equation~\\eqref{" .. label .. "}"
+  end
+  return "\\cref{" .. label .. "}"
+end,
+```
+
+When `copy_transform` is `nil` (the default) the raw label id is copied.
+
 ## Configuration reference
 
 | Option | Type | Default | Description |
@@ -294,6 +349,8 @@ latex_labels = {
 | `patterns` | `table` | see above | Ordered list of capture patterns |
 | `root_file` | `string` | `""` | Absolute path to the root `.tex` file; fallback when vimtex is absent and auto-detection fails |
 | `subfile_toggle_key` | `string` | `"<C-g>"` | Key to toggle between full-project and this-file view inside the picker |
+| `copy_label_key` | `string` | `"<C-y>"` | Key to copy the selected label reference to the system clipboard without opening the file |
+| `copy_transform` | `table\|function\|nil` | `nil` | Transform applied to the label before copying; see [Copy Label](#copy-label) |
 
 ## Cache format
 

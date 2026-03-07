@@ -26,6 +26,14 @@ local DEFAULT_CONFIG = {
   -- Copy label reference to system clipboard without opening the file
   copy_label_key = "<C-y>",       -- key to yank the label id (e.g. "df:scheme") into the + register
 
+  -- Optional transformation applied to a label before it is copied.
+  -- Accepts either:
+  --   • a table  { ["prefix:"] = "format string with %s" }
+  --     e.g. { ["df:"] = "\\cref{%s}", ["ex:"] = "example~\\ref{%s}" }
+  --   • a function(label: string) -> string
+  -- When nil (default) the raw label id is copied unchanged.
+  copy_transform = nil,
+
   -- Map LaTeX environment names to label prefixes.
   -- Used for the \begin{env}{Title}{label} pattern.
   transformations = {
