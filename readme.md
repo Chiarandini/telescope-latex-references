@@ -174,6 +174,12 @@ To force-rebuild the cache after adding or renaming labels:
 :LatexLabelsUpdate
 ```
 
+To open the cache file for the current project in a read-only split:
+
+```
+:LatexLabelsInspect
+```
+
 To delete every cache file and start fresh:
 
 ```

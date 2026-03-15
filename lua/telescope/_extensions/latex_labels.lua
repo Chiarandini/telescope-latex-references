@@ -57,6 +57,30 @@ local config = {}
 
 -- ─── Helpers ──────────────────────────────────────────────────────────────────
 
+---Open the cache file for the current project in a read-only split.
+local function inspect_cache()
+  local cache = require("telescope._extensions.latex_labels.cache")
+  local utils = require("telescope._extensions.latex_labels.utils")
+  local root_file = utils.get_root_file()
+  if not root_file then
+    vim.notify("[latex_labels] No file associated with current buffer.", vim.log.levels.WARN)
+    return
+  end
+
+  local cache_path = cache.get_cache_path(root_file, config.cache_strategy)
+  if vim.fn.filereadable(cache_path) == 0 then
+    vim.notify(
+      "[latex_labels] No cache found. Run :LatexLabelsUpdate to generate it.",
+      vim.log.levels.WARN
+    )
+    return
+  end
+
+  vim.cmd("split " .. vim.fn.fnameescape(cache_path))
+  vim.bo.readonly   = true
+  vim.bo.modifiable = false
+end
+
 ---Run a full cache regeneration for the project rooted at the current buffer.
 local function update_cache()
   local cache   = require("telescope._extensions.latex_labels.cache")
@@ -96,6 +120,11 @@ return telescope.register_extension({
     vim.api.nvim_create_user_command("LatexLabelsUpdate", function()
       update_cache()
     end, { desc = "Regenerate telescope-latex-labels cache for current project" })
+
+    -- :LatexLabelsInspect — open the cache file for the current project
+    vim.api.nvim_create_user_command("LatexLabelsInspect", function()
+      inspect_cache()
+    end, { desc = "Open the telescope-latex-labels cache file in a read-only split" })
 
     -- :LatexLabelsWipeAll — delete every cache file written by this plugin
     vim.api.nvim_create_user_command("LatexLabelsWipeAll", function()

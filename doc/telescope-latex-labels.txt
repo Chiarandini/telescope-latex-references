@@ -128,6 +128,11 @@ To force-rebuild the cache after adding or renaming labels: >
   :LatexLabelsUpdate
 <
 
+To inspect the raw cache file in a read-only split: >
+
+  :LatexLabelsInspect
+<
+
 To delete every cache file and start fresh: >
 
   :LatexLabelsWipeAll
@@ -441,6 +446,15 @@ patterns ~
     Force-regenerate the cache for the current project by re-scanning from
     the root file. Use this after adding, renaming, or removing labels.
     Prints the number of labels found when complete.
+
+:LatexLabelsInspect                                *:LatexLabelsInspect*
+
+    Open the cache file for the current project in a read-only horizontal
+    split. Useful for quickly inspecting which labels are cached and their
+    raw line/context/file data.
+
+    If no cache exists yet, a warning is shown instead. Run
+    |:LatexLabelsUpdate| first to generate it.
 
 :LatexLabelsWipeAll                                *:LatexLabelsWipeAll*
 
