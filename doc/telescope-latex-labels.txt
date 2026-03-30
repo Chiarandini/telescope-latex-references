@@ -46,6 +46,7 @@ Two classes of label are supported out of the box:
 
   • nvim-telescope/telescope.nvim
   • nvim-lua/plenary.nvim
+  • Chiarandini/latex-nav-core.nvim  (shared cache utilities)
   • lervag/vimtex  (optional — enables automatic root-file detection)
 
 ==============================================================================

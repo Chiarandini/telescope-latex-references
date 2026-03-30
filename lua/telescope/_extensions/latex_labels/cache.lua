@@ -9,16 +9,7 @@ local M = {}
 ---@param strategy string  "local" | "global"
 ---@return string
 M.get_cache_path = function(filepath, strategy)
-  if strategy == "local" then
-    local dir      = vim.fn.fnamemodify(filepath, ":h")
-    local filename = vim.fn.fnamemodify(filepath, ":t")
-    return dir .. "/." .. filename .. ".labels"
-  else
-    local cache_dir = vim.fn.stdpath("data") .. "/cached_labels"
-    vim.fn.mkdir(cache_dir, "p")
-    local hash = vim.fn.sha256(filepath)
-    return cache_dir .. "/" .. hash .. ".labels"
-  end
+  return require("latex_nav_core.cache").get_cache_path(filepath, strategy, "cached_labels", ".labels")
 end
 
 ---Read a cache file and return a list of label entries.
@@ -77,20 +68,7 @@ end
 ---@param strategy string  "local" | "global"
 ---@return integer, string|nil  number of files deleted, error message or nil
 M.wipe_all_caches = function(strategy)
-  if strategy ~= "global" then
-    return 0, "wipe_all is only supported for the 'global' cache strategy. "
-      .. "Delete *.labels files manually from your project directories."
-  end
-
-  local cache_dir = vim.fn.stdpath("data") .. "/cached_labels"
-  local files     = vim.fn.glob(cache_dir .. "/*.labels", false, true)
-  local count     = 0
-  for _, f in ipairs(files) do
-    if vim.fn.delete(f) == 0 then
-      count = count + 1
-    end
-  end
-  return count, nil
+  return require("latex_nav_core.cache").wipe_all_caches(strategy, "cached_labels", ".labels")
 end
 
 return M

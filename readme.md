@@ -40,6 +40,7 @@ scan on every open.
 
 - [nvim-telescope/telescope.nvim](https://github.com/nvim-telescope/telescope.nvim)
 - [nvim-lua/plenary.nvim](https://github.com/nvim-lua/plenary.nvim)
+- [Chiarandini/latex-nav-core.nvim](https://github.com/Chiarandini/latex-nav-core.nvim) — shared cache utilities
 - [lervag/vimtex](https://github.com/lervag/vimtex) *(optional — enables
   automatic root-file detection for multi-file projects)*
 
@@ -69,6 +70,7 @@ scan on every open.
   dependencies = {
     "nvim-telescope/telescope.nvim",
     "nvim-lua/plenary.nvim",
+    "Chiarandini/latex-nav-core.nvim",
   },
   config = function()
     require("telescope").load_extension("latex_labels")
@@ -84,6 +86,7 @@ use {
   requires = {
     "nvim-telescope/telescope.nvim",
     "nvim-lua/plenary.nvim",
+    "Chiarandini/latex-nav-core.nvim",
   },
   config = function()
     require("telescope").load_extension("latex_labels")

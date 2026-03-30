@@ -5,6 +5,15 @@ local DEFAULT_CONFIG = {
   -- "global" -> stdpath("data")/cached_labels/<sha256>.labels
   cache_strategy = "global",
 
+  -- ── Export settings ──────────────────────────────────────────────────────
+  -- These control the behaviour of :LatexLabelsExport.
+  -- All can be overridden in the format-selection UI; these act as defaults.
+  export_include_line       = true,   -- include line numbers in exported records
+  export_include_title      = true,   -- include label titles (context strings)
+  export_include_file       = true,   -- include file paths in exported records
+  export_use_relative_paths = false,  -- false → absolute paths, true → relative to project root
+  export_exclude_files      = {},     -- list of Lua patterns; matching filenames are skipped
+
   -- Follow \include and \input directives when scanning
   recursive = true,
 
@@ -56,6 +65,42 @@ local DEFAULT_CONFIG = {
 local config = {}
 
 -- ─── Helpers ──────────────────────────────────────────────────────────────────
+
+---Resolve the current project's root, load (or generate) its label cache,
+---and open the interactive export UI.
+local function export_labels()
+  local cache     = require("telescope._extensions.latex_labels.cache")
+  local scanner   = require("telescope._extensions.latex_labels.scanner")
+  local utils     = require("telescope._extensions.latex_labels.utils")
+  local export_ui = require("latex_nav_core.export_ui")
+
+  local root_file = utils.get_root_file()
+  if not root_file then
+    vim.notify("[latex_labels] No file associated with current buffer.", vim.log.levels.WARN)
+    return
+  end
+
+  local cache_path = cache.get_cache_path(root_file, config.cache_strategy)
+  local entries    = cache.read_cache(cache_path)
+
+  if not entries then
+    entries = scanner.scan_project(root_file, config)
+    cache.write_cache(cache_path, entries)
+  end
+
+  if #entries == 0 then
+    vim.notify("[latex_labels] No labels found for export.", vim.log.levels.WARN)
+    return
+  end
+
+  export_ui.open(entries, root_file, {
+    include_line       = config.export_include_line,
+    include_title      = config.export_include_title,
+    include_file       = config.export_include_file,
+    use_relative_paths = config.export_use_relative_paths,
+    exclude_files      = config.export_exclude_files,
+  })
+end
 
 ---Open the cache file for the current project in a read-only split.
 local function inspect_cache()
@@ -115,6 +160,11 @@ return telescope.register_extension({
 
   setup = function(ext_config, _telescope_config)
     config = vim.tbl_deep_extend("force", DEFAULT_CONFIG, ext_config or {})
+
+    -- :LatexLabelsExport — export labels to JSON / CSV / TSV / TXT via UI
+    vim.api.nvim_create_user_command("LatexLabelsExport", function()
+      export_labels()
+    end, { desc = "Export LaTeX labels to JSON / CSV / TSV / TXT" })
 
     -- :LatexLabelsUpdate — force-regenerate the cache for the current project
     vim.api.nvim_create_user_command("LatexLabelsUpdate", function()

@@ -35,3 +35,7 @@ end
 
 -- Add the plugin itself
 vim.opt.rtp:prepend(vim.fn.getcwd())
+
+-- Add latex-nav-core.nvim (sibling directory) so tests can require its modules
+local core_dir = vim.fn.fnamemodify(vim.fn.getcwd(), ":h") .. "/latex-nav-core.nvim"
+add_if_dir(core_dir)
