@@ -66,9 +66,54 @@ local config = {}
 
 -- ─── Helpers ──────────────────────────────────────────────────────────────────
 
+---Parse a command-line argument string into a pre_filled table for export_ui.
+---Recognised tokens: format=, path=, relative=, line=, title=, file=, exclude=
+---Unknown or malformed tokens are silently ignored.
+---@param args_str string
+---@return table
+local function parse_export_args(args_str)
+  if not args_str or args_str == "" then return {} end
+  local result = {}
+  for token in args_str:gmatch("%S+") do
+    local key, val = token:match("^(%w+)=(.+)$")
+    if key and val then
+      if key == "format" then
+        if ({ json=true, csv=true, tsv=true, txt=true })[val] then
+          result.format = val
+        end
+      elseif key == "path" then
+        result.path = vim.fn.expand(val)
+      elseif key == "relative" then
+        result.relative = (val == "true")
+      elseif key == "line" then
+        result.line = (val == "true")
+      elseif key == "title" then
+        result.title = (val == "true")
+      elseif key == "file" then
+        result.file = (val == "true")
+      elseif key == "exclude" then
+        result.exclude_files = vim.split(val, ",", { plain = true })
+      end
+    end
+  end
+  return result
+end
+
+---Tab-completion candidates for :LatexLabelsExport.
+local EXPORT_COMPLETIONS = {
+  "format=json", "format=csv", "format=tsv", "format=txt",
+  "path=",
+  "relative=true", "relative=false",
+  "line=true",     "line=false",
+  "title=true",    "title=false",
+  "file=true",     "file=false",
+  "exclude=",
+}
+
 ---Resolve the current project's root, load (or generate) its label cache,
----and open the interactive export UI.
-local function export_labels()
+---and open the export UI (or run directly when pre_filled is complete).
+---@param pre_filled table  Output of parse_export_args (may be empty).
+local function export_labels(pre_filled)
   local cache     = require("telescope._extensions.latex_labels.cache")
   local scanner   = require("telescope._extensions.latex_labels.scanner")
   local utils     = require("telescope._extensions.latex_labels.utils")
@@ -93,13 +138,18 @@ local function export_labels()
     return
   end
 
-  export_ui.open(entries, root_file, {
-    include_line       = config.export_include_line,
-    include_title      = config.export_include_title,
-    include_file       = config.export_include_file,
-    use_relative_paths = config.export_use_relative_paths,
-    exclude_files      = config.export_exclude_files,
-  })
+  export_ui.open(
+    entries,
+    root_file,
+    {
+      include_line       = config.export_include_line,
+      include_title      = config.export_include_title,
+      include_file       = config.export_include_file,
+      use_relative_paths = config.export_use_relative_paths,
+      exclude_files      = config.export_exclude_files,
+    },
+    pre_filled
+  )
 end
 
 ---Open the cache file for the current project in a read-only split.
@@ -161,10 +211,25 @@ return telescope.register_extension({
   setup = function(ext_config, _telescope_config)
     config = vim.tbl_deep_extend("force", DEFAULT_CONFIG, ext_config or {})
 
-    -- :LatexLabelsExport — export labels to JSON / CSV / TSV / TXT via UI
-    vim.api.nvim_create_user_command("LatexLabelsExport", function()
-      export_labels()
-    end, { desc = "Export LaTeX labels to JSON / CSV / TSV / TXT" })
+    -- :LatexLabelsExport [key=value ...] — export labels with optional args.
+    -- Bang (!) forces the full interactive UI regardless of arguments.
+    vim.api.nvim_create_user_command("LatexLabelsExport", function(cmd_opts)
+      local pre_filled = cmd_opts.bang and {} or parse_export_args(cmd_opts.args)
+      export_labels(pre_filled)
+    end, {
+      nargs    = "*",
+      bang     = true,
+      complete = function(arglead)
+        local matches = {}
+        for _, c in ipairs(EXPORT_COMPLETIONS) do
+          if c:sub(1, #arglead) == arglead then
+            table.insert(matches, c)
+          end
+        end
+        return matches
+      end,
+      desc = "Export LaTeX labels to JSON / CSV / TSV / TXT",
+    })
 
     -- :LatexLabelsUpdate — force-regenerate the cache for the current project
     vim.api.nvim_create_user_command("LatexLabelsUpdate", function()
