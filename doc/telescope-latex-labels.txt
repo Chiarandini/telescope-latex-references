@@ -16,6 +16,7 @@ TELESCOPE LATEX LABELS
 10. Commands ................ |telescope-latex-labels-commands|
 11. Keybindings ............. |telescope-latex-labels-keybindings|
 12. Cache Format ............ |telescope-latex-labels-cache|
+13. Label Export ............. |telescope-latex-labels-export|
 
 ==============================================================================
 1. INTRO                                     *telescope-latex-labels-intro*
@@ -406,6 +407,48 @@ copy_transform ~
 
     See |telescope-latex-labels-copy| for full examples.
 
+export_include_line ~
+    Type:    boolean
+    Default: `true`
+
+    When `true`, line numbers are included in every exported record.
+    Override per-invocation with the `line=` argument to
+    |:LatexLabelsExport|.
+
+export_include_title ~
+    Type:    boolean
+    Default: `true`
+
+    When `true`, label titles (context strings) are included in every
+    exported record. Override per-invocation with `title=`.
+
+export_include_file ~
+    Type:    boolean
+    Default: `true`
+
+    When `true`, file paths are included in every exported record.
+    Override per-invocation with `file=`. When `false`, the path-style
+    prompt is skipped automatically.
+
+export_use_relative_paths ~
+    Type:    boolean
+    Default: `false`
+
+    When `false`, absolute file paths are used in exported records.
+    When `true`, paths are relative to the project root directory.
+    Override per-invocation with `relative=`.
+
+export_exclude_files ~
+    Type:    table (list of strings)
+    Default: `{}`
+
+    Lua patterns matched against each label's full file path. Labels
+    whose filename matches any pattern are omitted from all exported
+    output. Override per-invocation with `exclude=`.
+
+    Example: `{ "archive", "backup" }` omits any label stored in a file
+    whose path contains "archive" or "backup".
+
 transformations ~
     Type:    table  (string → string)
     Default: see |telescope-latex-labels-setup|
@@ -469,6 +512,63 @@ patterns ~
     the cache files sit next to your source files; delete them manually
     (they match the glob `*.labels`).
 
+:LatexLabelsExport[!] [args]                         *:LatexLabelsExport*
+
+    Export all labels for the current project to a file. With no arguments
+    three sequential prompts guide you through format → path → path style.
+    Adding `!` (bang) forces the full interactive UI regardless of any
+    arguments that follow.
+
+    All arguments are optional `key=value` tokens separated by spaces.
+
+    `format=json|csv|tsv|txt`
+        Skip the format prompt and use this format.
+
+    `path=<filepath>`
+        Skip the path prompt. `~`, `$VAR`, and relative paths (including
+        `.`) are all resolved. When the path points to an existing
+        directory, the default filename for the chosen format is appended
+        automatically (e.g. `project_labels.json`).
+
+    `relative=true|false`
+        Skip the path-style prompt. `true` → paths relative to the
+        project root; `false` → absolute paths.
+
+    `line=true|false`
+        Override `export_include_line` for this invocation only.
+
+    `title=true|false`
+        Override `export_include_title` for this invocation only.
+
+    `file=true|false`
+        Override `export_include_file` for this invocation only. When
+        `false`, the path-style prompt is also skipped automatically.
+
+    `exclude=pat1,pat2,...`
+        Override `export_exclude_files` for this invocation. Each value
+        is a Lua pattern matched against the label's full file path.
+
+    Examples: >
+
+      " Full interactive UI
+      :LatexLabelsExport
+
+      " JSON to the project root, no prompts
+      :LatexLabelsExport format=json path=. relative=false
+
+      " CSV with IDs and titles only
+      :LatexLabelsExport format=csv line=false file=false path=~/out.csv
+
+      " Exclude archived files
+      :LatexLabelsExport format=json exclude=archive,backup
+
+      " Force the UI even when arguments are supplied
+      :LatexLabelsExport!
+<
+
+    Tab-completion is available for all argument keys and their common
+    values. See also |telescope-latex-labels-export|.
+
 ==============================================================================
 11. KEYBINDINGS                        *telescope-latex-labels-keybindings*
 
@@ -511,6 +611,97 @@ For the `"global"` strategy files live in:
 
 For the `"local"` strategy the file is placed next to your root `.tex` file:
   /path/to/project/.main.tex.labels
+
+==============================================================================
+13. LABEL EXPORT                             *telescope-latex-labels-export*
+
+The |:LatexLabelsExport| command writes the current project's labels to a
+file. Four formats are available.
+
+                                          *telescope-latex-labels-formats*
+FORMATS ~
+
+JSON ~
+
+A single object with `project_root`, `export_date` (ISO 8601 UTC string),
+and a `labels` array. Each element contains: >
+
+  {
+    "id":    "df:zeroSet",
+    "type":  "df",
+    "title": "Zero Set",
+    "file":  "/proj/chapters/ch1.tex",
+    "line":  164
+  }
+<
+`type` is always present (empty string when the id has no colon prefix).
+`title`, `file`, and `line` are omitted when the corresponding inclusion
+flag is `false`.
+
+CSV ~
+
+RFC 4180 compliant, with a header row: >
+
+  Label ID,Type,Title,File,Line
+<
+Fields containing commas or double-quotes are wrapped in double-quotes;
+embedded double-quotes are doubled (`""`). Columns whose inclusion flag is
+`false` are dropped from both the header and data rows.
+
+TSV ~
+
+Tab-separated, same column order as CSV. Embedded tabs and newlines in
+field values are replaced by spaces.
+
+Plain Text ~
+
+One label per line, pipe-separated, in column order: >
+
+  [line|]id[|title][|file]
+<
+No header row. Disabled columns are dropped entirely.
+
+                                            *telescope-latex-labels-path*
+OUTPUT PATH ~
+
+The path prompt and the `path=` argument accept:
+
+  Absolute paths          `/home/user/labels.json`
+  Paths with `~`          `~/Documents/labels.csv`
+  Paths with `$VAR`       `$HOME/export/labels.tsv`
+  Relative paths          `subdir/labels.json`  (resolved from cwd)
+  Directory paths         `.` or `~/Documents`
+    → default filename is appended: `project_labels.<ext>`
+
+                                         *telescope-latex-labels-examples*
+EXAMPLES ~
+
+Interactive export (all prompts): >
+
+  :LatexLabelsExport
+<
+Silent JSON export to the project root directory: >
+
+  :LatexLabelsExport format=json path=. relative=false
+<
+Minimal CSV — IDs and titles only, no line numbers or file paths: >
+
+  :LatexLabelsExport format=csv line=false file=false path=~/labels.csv
+<
+Exclude files matching a pattern: >
+
+  :LatexLabelsExport format=json exclude=archive,backup
+<
+Force the full interactive UI: >
+
+  :LatexLabelsExport!
+<
+Scripting from a shell via `nvim --headless`: >
+
+  nvim --headless \
+    -c "LatexLabelsExport format=json path=/tmp/labels.json relative=false" \
+    -c "qa"
+<
 
 ==============================================================================
 vim:ft=help:tw=78:

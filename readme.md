@@ -35,6 +35,9 @@ scan on every open.
 - **Copy with transform** — press a key inside the picker to copy a label
   reference to the system clipboard; an optional `copy_transform` hook lets you
   wrap the label automatically (e.g. `df:grp` → `\cref{df:grp}`)
+- **Label Export** — export the full label list to JSON, CSV, TSV, or plain
+  text via `:LatexLabelsExport`; format, path, and inclusion flags can all be
+  supplied as command-line arguments for scripting
 
 ## Requirements
 
@@ -360,6 +363,94 @@ When `copy_transform` is `nil` (the default) the raw label id is copied.
 | `subfile_toggle_key` | `string` | `"<C-g>"` | Key to toggle between full-project and this-file view inside the picker |
 | `copy_label_key` | `string` | `"<C-y>"` | Key to copy the selected label reference to the system clipboard without opening the file |
 | `copy_transform` | `table\|function\|nil` | `nil` | Transform applied to the label before copying; see [Copy Label](#copy-label) |
+| `export_include_line` | `boolean` | `true` | Include line numbers in exported records |
+| `export_include_title` | `boolean` | `true` | Include label titles in exported records |
+| `export_include_file` | `boolean` | `true` | Include file paths in exported records |
+| `export_use_relative_paths` | `boolean` | `false` | Use paths relative to project root in exported records |
+| `export_exclude_files` | `table` | `{}` | Lua patterns — labels whose filename matches any pattern are excluded from export |
+
+## Label Export
+
+Export the current project's labels with `:LatexLabelsExport`. With no
+arguments, three sequential prompts guide you through format → output path →
+path style. Every prompt can be bypassed with `key=value` arguments.
+
+```
+:LatexLabelsExport [key=value ...]
+```
+
+Use `!` (bang) to force the full interactive UI regardless of any arguments:
+
+```
+:LatexLabelsExport!
+```
+
+### Arguments
+
+| Argument | Values | Description |
+|---|---|---|
+| `format=` | `json` `csv` `tsv` `txt` | Output format; skips the format prompt |
+| `path=` | any path | Output file or directory; skips the path prompt. `~`, `$VAR`, relative paths, and directories (default filename appended) are all accepted |
+| `relative=` | `true` `false` | Path style; skips the path-style prompt |
+| `line=` | `true` `false` | Include/omit line numbers (overrides config) |
+| `title=` | `true` `false` | Include/omit label titles (overrides config) |
+| `file=` | `true` `false` | Include/omit file paths (overrides config) |
+| `exclude=` | `pat1,pat2,...` | Lua patterns — labels whose filename matches are omitted |
+
+Tab-completion is available for all arguments.
+
+### Examples
+
+```vim
+" Interactive — all three prompts
+:LatexLabelsExport
+
+" Silent JSON export to the project root directory
+:LatexLabelsExport format=json path=. relative=false
+
+" Minimal CSV — IDs and titles only, no line numbers or file paths
+:LatexLabelsExport format=csv line=false file=false path=~/labels.csv
+
+" Exclude archived files
+:LatexLabelsExport format=json exclude=archive,backup
+
+" Force the full interactive UI
+:LatexLabelsExport!
+```
+
+Shell scripting via `nvim --headless`:
+
+```sh
+nvim --headless \
+  -c "LatexLabelsExport format=json path=/tmp/labels.json relative=false" \
+  -c "qa"
+```
+
+### Export configuration
+
+These keys go in the `extensions.latex_labels` table during `telescope.setup()`:
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `export_include_line` | `boolean` | `true` | Include line numbers in exported records |
+| `export_include_title` | `boolean` | `true` | Include label titles in exported records |
+| `export_include_file` | `boolean` | `true` | Include file paths in exported records |
+| `export_use_relative_paths` | `boolean` | `false` | Use paths relative to project root |
+| `export_exclude_files` | `table` | `{}` | Lua patterns — matching filenames are excluded |
+
+### Output formats
+
+**JSON** — a single object with `project_root`, `export_date` (ISO 8601 UTC),
+and a `labels` array. Each element has `id`, `type` (prefix before the first
+colon, or `""`), and optionally `title`, `file`, `line`.
+
+**CSV** — RFC 4180, with header row `Label ID,Type[,Title][,File][,Line]`.
+Fields containing commas or quotes are wrapped in double-quotes.
+
+**TSV** — tab-separated, same column order. Embedded tabs are replaced by spaces.
+
+**Plain Text** — one label per line, pipe-separated: `[line|]id[|title][|file]`.
+No header row.
 
 ## Cache format
 
