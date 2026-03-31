@@ -283,15 +283,33 @@ end)
 -- ─── format_txt ──────────────────────────────────────────────────────────────
 
 describe("export.format_txt", function()
-  it("produces lines in pipe-separated cache format", function()
+  it("produces pipe-separated lines with all fields by default", function()
     local txt   = export.format_txt(ENTRIES)
     local lines = vim.split(txt, "\n")
     assert.equal(#ENTRIES, #lines)
-    -- First line should be: 121|sec:classicalAlgGeo|Classical Algebraic Geometry|/proj/main.tex
+    -- Default order: line|id|context|file
     assert.equal(
       "121|sec:classicalAlgGeo|Classical Algebraic Geometry|/proj/main.tex",
       lines[1]
     )
+  end)
+
+  it("omits line when include_line = false", function()
+    local txt  = export.format_txt(ENTRIES, { include_line = false })
+    local row  = vim.split(txt, "\n")[1]
+    assert.equal("sec:classicalAlgGeo|Classical Algebraic Geometry|/proj/main.tex", row)
+  end)
+
+  it("omits file when include_file = false", function()
+    local txt = export.format_txt(ENTRIES, { include_file = false })
+    local row = vim.split(txt, "\n")[1]
+    assert.equal("121|sec:classicalAlgGeo|Classical Algebraic Geometry", row)
+  end)
+
+  it("omits both line and file when both are false", function()
+    local txt = export.format_txt(ENTRIES, { include_line = false, include_file = false })
+    local row = vim.split(txt, "\n")[1]
+    assert.equal("sec:classicalAlgGeo|Classical Algebraic Geometry", row)
   end)
 
   it("filters entries via exclude_files", function()
