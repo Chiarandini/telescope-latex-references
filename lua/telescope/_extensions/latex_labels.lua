@@ -20,6 +20,9 @@ local DEFAULT_CONFIG = {
   -- Automatically regenerate the cache whenever a .tex file is saved
   auto_update = false,
 
+  -- Show a vim.notify message after a successful cache update
+  notify_on_update = true,
+
   -- Search ±N lines around the cached position when a label seems to have moved
   enable_smart_jump = true,
   smart_jump_window = 200,
@@ -192,10 +195,12 @@ local function update_cache()
   local ok, err    = cache.write_cache(cache_path, entries)
 
   if ok then
-    vim.notify(
-      string.format("[latex_labels] Cache updated (%d labels).", #entries),
-      vim.log.levels.INFO
-    )
+    if config.notify_on_update then
+      vim.notify(
+        string.format("[latex_labels] Cache updated (%d labels).", #entries),
+        vim.log.levels.INFO
+      )
+    end
   else
     vim.notify(
       "[latex_labels] Failed to write cache: " .. (err or "unknown error"),
@@ -209,6 +214,15 @@ end
 return telescope.register_extension({
 
   setup = function(ext_config, _telescope_config)
+    if not pcall(require, "latex_nav_core.cache") then
+      vim.notify(
+        "[latex_labels] Missing required dependency: latex-nav-core.nvim\n"
+          .. "  Add 'Chiarandini/latex-nav-core.nvim' to your plugin manager.",
+        vim.log.levels.ERROR
+      )
+      return
+    end
+
     config = vim.tbl_deep_extend("force", DEFAULT_CONFIG, ext_config or {})
 
     -- :LatexLabelsExport [key=value ...] — export labels with optional args.
